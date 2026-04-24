@@ -17,7 +17,6 @@
 *   `gui_app.py`: মূল অ্যাপ্লিকেশন (GUI সহ)।
 *   `reel_comment.py`: অটোমেশনের মূল লজিক।
 *   `pklgenerator.py`: সেশন তৈরির লজিক।
-*   `build_exe.py`: EXE ফাইল বানানোর স্ক্রিপ্ট।
 *   `requirements.txt`: প্রয়োজনীয় লাইব্রেরির তালিকা।
 
 ## কিভাবে শুরু করবেন (How to Run)
