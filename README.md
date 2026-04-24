@@ -1,105 +1,44 @@
-# Autocommenter
+# ফেসবুক রিলস অটো-কমেন্টার (Facebook Reels Auto-Commenter)
 
-Small Python helpers to **save a Facebook mobile-browser session** to a pickle file and **reuse that session** to post comments on the **Reels** feed with **undetected Chrome**. Intended for personal automation only; you are responsible for complying with Meta’s terms and policies.
+এটি একটি প্রফেশনাল অটোমেশন টুল যা ফেসবুক রিলসে স্বয়ংক্রিয়ভাবে কমেন্ট করতে সাহায্য করে। এতে আধুনিক GUI ইন্টারফেস এবং প্যারালাল ব্রাউজিং সাপোর্ট রয়েছে।
 
-## Requirements
+## মূল বৈশিষ্ট্যসমূহ (Features)
 
-- **Python 3.9+** (tested with 3.9 on Windows)
-- **Google Chrome** installed (version should match what `undetected-chromedriver` pulls in)
-- Python packages (from repo root):
+*   **আধুনিক GUI:** `customtkinter` ব্যবহার করে তৈরি করা একটি প্রিমিয়াম ডাঙ্ক-মোড ইন্টারফেস।
+*   **একধিক ব্রাউজার সাপোর্ট (Multi-Browser):** একসাথে একাধিক ব্রাউজার উইন্ডো চালিয়ে কাজ দ্রুত শেষ করার সুবিধা।
+*   **সেশন জেনারেটর (PKL Generator):** সরাসরি অ্যাপ থেকেই ফেসবুক লগইন করে সেশন ফাইল (.pkl) তৈরি করার সুবিধা।
+*   **র‍্যান্ডম ডিলে (Random Delay):** কমেন্টের মধ্যে বিরতি দেওয়ার জন্য সর্বনিম্ন এবং সর্বোচ্চ সময় নির্ধারণের সুবিধা (যাতে ফেসবুক ডিটেক্ট করতে না পারে)।
+*   **স্মার্ট উইন্ডো রিসাইজিং:** অটোমেটিক ১০% উইন্ডো হাইট বাড়িয়ে কমেন্ট সেকশন পরিষ্কারভাবে দেখার ব্যবস্থা।
+*   **ডিভাইস প্রিসেট:** বিভিন্ন মোবাইলের স্ক্রিন সাইজ (iPhone, Pixel, Samsung) সিলেক্ট করার সুবিধা এবং ফুল স্ক্রিন মোড।
+*   **EXE তৈরি:** মাত্র এক ক্লিকেই পুরো প্রোজেক্টকে একটি EXE ফাইলে রূপান্তর করার স্ক্রিপ্ট।
 
-```bash
-pip install -r requirements.txt
-```
+## ফাইল স্ট্রাকচার (File Structure)
 
-## Project layout
+*   `gui_app.py`: মূল অ্যাপ্লিকেশন (GUI সহ)।
+*   `reel_comment.py`: অটোমেশনের মূল লজিক।
+*   `pklgenerator.py`: সেশন তৈরির লজিক।
+*   `build_exe.py`: EXE ফাইল বানানোর স্ক্রিপ্ট।
+*   `requirements.txt`: প্রয়োজনীয় লাইব্রেরির তালিকা।
 
-| Path | Purpose |
-|------|---------|
-| `pklgenerator.py` | Opens Facebook mobile login, you sign in manually, then saves cookies + storage to a `.pkl` file |
-| `reel_comment.py` | Loads one or more `.pkl` files, opens Reels, posts comments (mobile viewport / UA) |
-| `pklfiles/` | Recommended folder for `.pkl` session files (e.g. `facebook_login_data1.pkl`, `facebook_login_data2.pkl`) |
+## কিভাবে শুরু করবেন (How to Run)
 
-## 1. Save a session (`pklgenerator.py`)
-
-1. Run:
-
-   ```bash
-   python pklgenerator.py
+১. প্রথমে নিশ্চিত করুন আপনার কম্পিউটারে Python ইনস্টল করা আছে।
+২. প্রয়োজনীয় লাইব্রেরি ইনস্টল করতে টার্মিনালে লিখুন:
+   ```powershell
+   pip install -r requirements.txt
+   ```
+৩. অ্যাপটি চালু করতে লিখুন:
+   ```powershell
+   python gui_app.py
    ```
 
-2. Log in **manually** in the browser that opens (`m.facebook.com`).
+## EXE বানানোর নিয়ম
 
-3. When finished, press **Enter** in the terminal.
-
-4. By default, data is written to **`facebook_login_data.pkl`** in the current working directory.
-
-To save into `pklfiles/` with a custom name:
-
-```python
-# Or change the script’s default, or call from a tiny wrapper:
-python -c "from pklgenerator import save_facebook_session; save_facebook_session('pklfiles/account1.pkl')"
+আপনি যদি এটিকে একটি পোর্টেবল অ্যাপ (EXE) হিসেবে ব্যবহার করতে চান, তবে টার্মিনালে লিখুন:
+```powershell
+python build_exe.py
 ```
+কাজ শেষ হলে `dist` ফোল্ডারের ভেতর আপনার EXE ফাইলটি পেয়ে যাবেন।
 
-On Windows, if ChromeDriver cache errors appear (`FileExistsError` / WinError 183), `pklgenerator.py` already clears the usual undetected-chromedriver cache path before launch.
-
-## 2. Comment on Reels (`reel_comment.py`)
-
-### Interactive (prompts for reel count and comment)
-
-```bash
-python reel_comment.py
-```
-
-### Non-interactive
-
-```bash
-python reel_comment.py --reels 3 --comment "Hello!"
-```
-
-### Multiple accounts (one browser, no restart)
-
-- Put several **`*.pkl`** files under **`pklfiles/`** (sorted by filename).
-- Run **without** `--pkl`: every `.pkl` in that folder is processed in order.  
-  After each account finishes **`--reels`** comments, cookies/storage are cleared **in the same window** and the next PKL is applied.
-
-```bash
-python reel_comment.py --reels 2 --comment "Nice reel"
-```
-
-- Scan another directory:
-
-  ```bash
-  python reel_comment.py --pkl-dir D:\ks\autocommenter\pklfiles --reels 1 --comment "Hi"
-  ```
-
-- Pick specific files (order = order of flags):
-
-  ```bash
-  python reel_comment.py --pkl pklfiles\a.pkl --pkl pklfiles\b.pkl --reels 1 --comment "Hey"
-  ```
-
-### Useful flags
-
-| Flag | Description |
-|------|-------------|
-| `--pkl` | One PKL path; repeat for multiple files (if omitted, all `*.pkl` in `--pkl-dir` are used) |
-| `--pkl-dir` | Folder scanned when `--pkl` is omitted (default: `pklfiles/` next to `reel_comment.py`) |
-| `--reels` | How many **different** reels to comment on **per account** |
-| `--comment` | Comment text (if omitted, you are prompted) |
-| `--url` | Reel feed URL (default `https://www.facebook.com/reel/`; reloaded between reels to reduce sticking on one video) |
-| `--width` / `--height` | Mobile viewport for device metrics (defaults match `pklgenerator`: **390×844**) |
-
-### Errors and debugging
-
-- If a step fails, the script **leaves the browser open** and asks you to press **Enter** after inspecting the page (e.g. DevTools → Elements), then closes the browser.
-
-## Flow summary
-
-1. Generate PKL(s) with **`pklgenerator.py`** (one run per account if you use multiple PKLs).
-2. Place them in **`pklfiles/`** (or pass explicit `--pkl` paths).
-3. Run **`reel_comment.py`** with **`--reels`** and **`--comment`** (or answer prompts).
-
-## Disclaimer
-
-Automation on Meta services can violate the **Facebook Terms** or trigger rate limits or security checks. Use only accounts you control, avoid spam, and prefer **official APIs** for anything commercial or at scale. This repository is provided as-is with no warranty.
+## সতর্কতা (Disclaimer)
+এই টুলটি শুধুমাত্র ব্যক্তিগত কাজের জন্য ব্যবহারের জন্য তৈরি। ফেসবুকের পলিসি অনুযায়ী অতিরিক্ত কমেন্ট করা থেকে বিরত থাকুন।

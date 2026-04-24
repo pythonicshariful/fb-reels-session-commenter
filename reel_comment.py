@@ -5,6 +5,8 @@ Load session from PKL (same format as pklgenerator.py), open Reels, optional
 
 import argparse
 import pickle
+import random
+import threading
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -25,11 +27,17 @@ from pklgenerator import (
 
 # Same logical size as pklgenerator mobile emulation (390×844).
 DEFAULT_VIEWPORT_WIDTH = 390
-DEFAULT_VIEWPORT_HEIGHT = 844
+DEFAULT_VIEWPORT_HEIGHT = 1000
 
+
+_thread_local = threading.local()
 
 def _log(msg: str) -> None:
-    print(f"[reel_comment] {msg}", flush=True)
+    logger = getattr(_thread_local, "logger", None)
+    if logger:
+        logger(msg)
+    else:
+        print(f"[reel_comment] {msg}", flush=True)
 
 
 def _script_dir() -> Path:
@@ -138,6 +146,30 @@ def _restore_facebook_session(driver, data: dict) -> None:
     driver.refresh()
     time.sleep(1)
     _log(f"After refresh: url={driver.current_url!r} title={driver.title!r}")
+
+
+def _is_logged_in(driver) -> bool:
+    """Check if the session is logically logged in based on URL and page content."""
+    url = driver.current_url.lower()
+    if any(k in url for k in ["login", "checkpoint", "two_step_verification"]):
+        _log(f"Login failed/blocked: URL indicates non-logged state ({url})")
+        return False
+
+    # Check for "Log In" or "Sign Up" indicators in the DOM
+    # Mobile common markers
+    markers = [
+        "//button[contains(., 'Log In')]",
+        "//button[contains(., 'Login')]",
+        "//div[contains(text(), 'Welcome to Facebook')]",
+        "//a[contains(@href, '/reg/') or contains(@href, '/r.php')]",
+    ]
+    for xp in markers:
+        if driver.find_elements(By.XPATH, xp):
+            _log(f"Login failed: Found login marker XPath: {xp}")
+            return False
+
+    _log("Login status looks OK (no login markers found).")
+    return True
 
 
 def _create_mobile_driver(
@@ -386,11 +418,16 @@ def run(
     reel_url: str,
     comment: str,
     reel_count: int = 1,
+    min_delay: float = 2.0,
+    max_delay: float = 5.0,
     not_now_timeout: float = 6.0,
     step_timeout: float = 25.0,
     viewport_width: int = DEFAULT_VIEWPORT_WIDTH,
     viewport_height: int = DEFAULT_VIEWPORT_HEIGHT,
+    logger=None,
 ) -> None:
+    if logger:
+        _thread_local.logger = logger
     if reel_count < 1:
         raise ValueError("reel_count must be at least 1")
     paths = [p.resolve() for p in pkl_paths]
@@ -421,24 +458,47 @@ def run(
             _print_pkl_summary(data)
             _restore_facebook_session(driver, data)
 
+            if not _is_logged_in(driver):
+                _log(f"SKIP Account: {pkl_path.name} is not logged in or is locked.")
+                continue
+
             _log(f"Opening reel URL: {feed_url!r}")
             driver.get(feed_url)
             time.sleep(2)
             _log(f"After reel load: url={driver.current_url!r} title={driver.title!r}")
 
-            for i in range(reel_count):
-                _comment_on_current_reel(
-                    driver,
-                    comment,
-                    step_timeout,
-                    not_now_timeout,
-                    index=i,
-                    total=reel_count,
-                )
-                if i + 1 < reel_count:
-                    _log("Moving to next reel (scroll nudge + reload feed)…")
-                    _scroll_feed_try_next_reel(driver)
-                    _go_to_fresh_reel_feed(driver, feed_url)
+            # Increase height by 10% after load to ensure comment section visibility
+            try:
+                _log("Boosting window height by 10% for improved visibility…")
+                window_size = driver.get_window_size()
+                driver.set_window_size(window_size['width'], int(window_size['height'] * 1.1))
+                time.sleep(0.5)
+            except Exception as e:
+                _log(f"Dynamic resize failed: {e}")
+
+            try:
+                for i in range(reel_count):
+                    _comment_on_current_reel(
+                        driver,
+                        comment,
+                        step_timeout,
+                        not_now_timeout,
+                        index=i,
+                        total=reel_count,
+                    )
+                    if i + 1 < reel_count:
+                        _log("Moving to next reel (scroll nudge + reload feed)…")
+                        _scroll_feed_try_next_reel(driver)
+                        _go_to_fresh_reel_feed(driver, feed_url)
+
+                        # Random delay between reels
+                        delay = random.uniform(min_delay, max_delay)
+                        _log(f"Random delay: waiting {delay:.2f}s...")
+                        time.sleep(delay)
+            except Exception as e:
+                _log(f"Error processing reels for account {pkl_path.name}: {e}")
+                _log("Will attempt to move to next account...")
+                continue
 
         ok = True
     except Exception:
@@ -505,7 +565,19 @@ def main():
         "--height",
         type=int,
         default=DEFAULT_VIEWPORT_HEIGHT,
-        help="Mobile viewport height (default 844, same as pklgenerator)",
+        help="Mobile viewport height (default 1000)",
+    )
+    ap.add_argument(
+        "--min-delay",
+        type=float,
+        default=2.0,
+        help="Minimum random delay between reels (seconds)",
+    )
+    ap.add_argument(
+        "--max-delay",
+        type=float,
+        default=5.0,
+        help="Maximum random delay between reels (seconds)",
     )
     args = ap.parse_args()
 
@@ -545,6 +617,8 @@ def main():
         args.url,
         comment_text,
         reel_count=reel_count,
+        min_delay=args.min_delay,
+        max_delay=args.max_delay,
         viewport_width=args.width,
         viewport_height=args.height,
     )
